@@ -122,10 +122,10 @@ class CalendarHeatmap extends React.Component {
   }
 
   drawChart() {
-    if ( this.overview === 'global' ) {
-      this.drawGlobalOverview()
-    } else if ( this.overview === 'year' ) {
+    if ( this.overview === 'year' || this.props.onlyYearOverview) {
       this.drawYearOverview()
+    } else if ( this.overview === 'global' ) {
+      this.drawGlobalOverview()
     } else if ( this.overview === 'month' ) {
       this.drawMonthOverview()
     } else if ( this.overview === 'week' ) {
@@ -278,20 +278,20 @@ class CalendarHeatmap extends React.Component {
           }
         }
         tooltip_html += '<br />'
-
+        const {convFunction} = this.props;
         // Add summary to the tooltip
         if (d.summary.length <= 5) {
           let counter = 0
           while ( counter < d.summary.length ) {
             tooltip_html += '<div><span><strong>' + d.summary[counter].name + '</strong></span>'
-            tooltip_html += '<span>' + this.formatTime(d.summary[counter].value) + '</span></div>'
+            tooltip_html += '<span>' + convFunction(d.summary[counter].value) + '</span></div>'
             counter++
           }
         } else {
           let counter = 0
           while ( counter < 5 ) {
             tooltip_html += '<div><span><strong>' + d.summary[counter].name + '</strong></span>'
-            tooltip_html += '<span>' + this.formatTime(d.summary[counter].value) + '</span></div>'
+            tooltip_html += '<span>' + convFunction(d.summary[counter].value) + '</span></div>'
             counter++
           }
 
@@ -304,7 +304,7 @@ class CalendarHeatmap extends React.Component {
             counter++
           }
           tooltip_html += '<div><span><strong>Other:</strong></span>'
-          tooltip_html += '<span>' + this.formatTime(other_projects_sum) + '</span></div>'
+          tooltip_html += '<span>' + this.convFunction(other_projects_sum) + '</span></div>'
         }
 
         // Calculate tooltip position
@@ -421,16 +421,20 @@ class CalendarHeatmap extends React.Component {
     if (this.history[this.history.length - 1] !== this.overview) {
       this.history.push(this.overview)
     }
-
+    const {startOfYearOverview} = this.props;
     // Define start and end date of the selected year
-    let start_of_year = moment(this.selected.date).startOf('year')
-    let end_of_year = moment(this.selected.date).endOf('year')
+    let start_of_year = !startOfYearOverview
+      ? moment(this.selected.date).startOf('year')
+      : startOfYearOverview
+    let end_of_year = !startOfYearOverview
+      ? moment(this.selected.date).endOf('year')
+      : startOfYearOverview.clone().add(12, 'months')
 
     // Filter data down to the selected year
     let year_data = this.props.data.filter(d => {
       return start_of_year <= moment(d.date) && moment(d.date) < end_of_year
     })
-
+    const cursorStyle = this.props.onlyYearOverview ? 'default' : 'pointer';
     // Calculate max value of the year data
     let max_value = d3.max(year_data, d => d.total)
 
@@ -462,7 +466,7 @@ class CalendarHeatmap extends React.Component {
       .enter()
       .append('rect')
       .attr('class', 'item item-circle')
-      .style('cursor', 'pointer')
+      .style('cursor', cursorStyle)
       .style('opacity', 0)
       .attr('x', d => {
         return calcItemX(d) + (this.settings.item_size - calcItemSize(d)) / 2
@@ -491,6 +495,8 @@ class CalendarHeatmap extends React.Component {
         // Don't transition if there is no data to show
         if (d.total === 0) { return }
 
+        if(this.props.onlyYearOverview) { return }
+
         this.in_transition = true
 
         // Set selected date to the one clicked on
@@ -508,7 +514,6 @@ class CalendarHeatmap extends React.Component {
       })
       .on('mouseover', d => {
         if (this.in_transition) { return }
-
         // Pulsating animation
         let circle = d3.select(d3.event.currentTarget)
         let repeat = () => {
@@ -543,15 +548,16 @@ class CalendarHeatmap extends React.Component {
         repeat()
 
         // Construct tooltip
+        const {convFunction} = this.props;
         let tooltip_html = ''
-        tooltip_html += `<div class="${styles.header}"><strong>${d.total ? this.formatTime(d.total) : 'No time'} tracked</strong></div>`
+        tooltip_html += `<div class="${styles.header}"><strong>${d.total ? convFunction(d.total) : 'No time'} tracked</strong></div>`
         tooltip_html += '<div>on ' + moment(d.date).format('dddd, MMM Do YYYY') + '</div><br>'
 
         // Add summary to the tooltip
         let counter = 0
         while ( counter < d.summary.length ) {
           tooltip_html += '<div><span><strong>' + d.summary[counter].name + '</strong></span>'
-          tooltip_html += '<span>' + this.formatTime(d.summary[counter].value) + '</span></div>'
+          tooltip_html += '<span>' + convFunction(d.summary[counter].value) + '</span></div>'
           counter++
         }
 
@@ -561,8 +567,10 @@ class CalendarHeatmap extends React.Component {
           x -= this.settings.tooltip_width + this.settings.tooltip_padding * 2
         }
         let y = calcItemY(d) + this.settings.item_size
-
         // Show tooltip
+        const {left: containerX, top: containerY} = this.container.getBoundingClientRect();
+        x += containerX;
+        y += containerY;
         this.tooltip.html(tooltip_html)
           .style('left', x + 'px')
           .style('top', y + 'px')
@@ -630,7 +638,7 @@ class CalendarHeatmap extends React.Component {
       .enter()
       .append('text')
       .attr('class', 'label label-month')
-      .style('cursor', 'pointer')
+      .style('cursor', cursorStyle)
       .style('fill', 'rgb(170, 170, 170)')
       .attr('font-size', () => {
         return Math.floor(this.settings.label_padding / 3) + 'px'
@@ -665,6 +673,7 @@ class CalendarHeatmap extends React.Component {
       })
       .on('click', d => {
         if (this.in_transition) { return }
+        if(this.props.onlyYearOverview) { return }
 
         // Check month data
         let month_data = this.props.data.filter(e => {
@@ -703,7 +712,7 @@ class CalendarHeatmap extends React.Component {
       .enter()
       .append('text')
       .attr('class', 'label label-day')
-      .style('cursor', 'pointer')
+      .style('cursor', cursorStyle)
       .style('fill', 'rgb(170, 170, 170)')
       .attr('x', this.settings.label_padding / 3)
       .attr('y', (d, i) => {
@@ -739,7 +748,9 @@ class CalendarHeatmap extends React.Component {
       })
 
     // Add button to switch back to previous overview
-    this.drawButton()
+    if (!this.props.onlyYearOverview) {
+      this.drawButton()
+    }
   }
 
 
@@ -873,9 +884,10 @@ class CalendarHeatmap extends React.Component {
         let date = new Date(parentNode.attr('date'))
 
         // Construct tooltip
+        const {convFunction} = this.props;
         let tooltip_html = ''
         tooltip_html += `<div class="${styles.header}"><strong>${d.name}</strong></div><br>`
-        tooltip_html += '<div><strong>' + (d.value ? this.formatTime(d.value) : 'No time') + ' tracked</strong></div>'
+        tooltip_html += '<div><strong>' + (d.value ? convFunction(d.value) : 'No time') + ' tracked</strong></div>'
         tooltip_html += '<div>on ' + moment(date).format('dddd, MMM Do YYYY') + '</div>'
 
         // Calculate tooltip position
@@ -1164,8 +1176,9 @@ class CalendarHeatmap extends React.Component {
 
         // Construct tooltip
         let tooltip_html = ''
+        const {convFunction} = this.props;
         tooltip_html += `<div class="${styles.header}"><strong>${d.name}</strong></div><br>`
-        tooltip_html += '<div><strong>' + (d.value ? this.formatTime(d.value) : 'No time') + ' tracked</strong></div>'
+        tooltip_html += '<div><strong>' + (d.value ? convFunction(d.value) : 'No time') + ' tracked</strong></div>'
         tooltip_html += '<div>on ' + moment(date).format('dddd, MMM Do YYYY') + '</div>'
 
         // Calculate tooltip position
@@ -1352,11 +1365,11 @@ class CalendarHeatmap extends React.Component {
       .style('opacity', 0)
       .on('mouseover', d => {
         if (this.in_transition) { return }
-
+        const {convFunction} = this.props;
         // Construct tooltip
         let tooltip_html = ''
         tooltip_html += `<div class="${styles.header}"><strong>${d.name}</strong><div><br>`
-        tooltip_html += '<div><strong>' + (d.value ? this.formatTime(d.value) : 'No time') + ' tracked</strong></div>'
+        tooltip_html += '<div><strong>' + (d.value ? convFunction(d.value) : 'No time') + ' tracked</strong></div>'
         tooltip_html += '<div>on ' + moment(d.date).format('dddd, MMM Do YYYY HH:mm') + '</div>'
 
         // Calculate tooltip position
@@ -1685,28 +1698,6 @@ class CalendarHeatmap extends React.Component {
       .remove()
   }
 
-
-  /**
-   * Helper function to convert seconds to a human readable format
-   * @param seconds Integer
-   */
-  formatTime(seconds) {
-    let hours = Math.floor(seconds / 3600)
-    let minutes = Math.floor((seconds - (hours * 3600)) / 60)
-    let time = ''
-    if (hours > 0) {
-      time += hours === 1 ? '1 hour ' : hours + ' hours '
-    }
-    if (minutes > 0) {
-      time += minutes === 1 ? '1 minute' : minutes + ' minutes'
-    }
-    if (hours === 0 && minutes === 0) {
-      time = Math.round(seconds) + ' seconds'
-    }
-    return time
-  }
-
-
   render() {
     return (
       <div id='calendar-heatmap'
@@ -1717,11 +1708,34 @@ class CalendarHeatmap extends React.Component {
   }
 }
 
+  /**
+   * Helper function to convert seconds to a human readable format
+   * @param seconds Integer
+   */
+const formatTime = (seconds) => {
+  let hours = Math.floor(seconds / 3600)
+  let minutes = Math.floor((seconds - (hours * 3600)) / 60)
+  let time = ''
+  if (hours > 0) {
+    time += hours === 1 ? '1 hour ' : hours + ' hours '
+  }
+  if (minutes > 0) {
+    time += minutes === 1 ? '1 minute' : minutes + ' minutes'
+  }
+  if (hours === 0 && minutes === 0) {
+    time = Math.round(seconds) + ' seconds'
+  }
+  return time
+}
+
 CalendarHeatmap.defaultProps = {
   data: [],
   overview: 'year',
   color: '#ff4500',
   handler: undefined,
+  onlyYearOverview: false,
+  startOfYearOverview: null,
+  convFunction: formatTime,
 }
 
 export default CalendarHeatmap

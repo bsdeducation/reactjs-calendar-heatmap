@@ -247,10 +247,10 @@ var CalendarHeatmap = function (_React$Component) {
   }, {
     key: 'drawChart',
     value: function drawChart() {
-      if (this.overview === 'global') {
-        this.drawGlobalOverview();
-      } else if (this.overview === 'year') {
+      if (this.overview === 'year' || this.props.onlyYearOverview) {
         this.drawYearOverview();
+      } else if (this.overview === 'global') {
+        this.drawGlobalOverview();
       } else if (this.overview === 'month') {
         this.drawMonthOverview();
       } else if (this.overview === 'week') {
@@ -393,20 +393,21 @@ var CalendarHeatmap = function (_React$Component) {
           }
         }
         tooltip_html += '<br />';
-
+        var convFunction = _this2.props.convFunction;
         // Add summary to the tooltip
+
         if (d.summary.length <= 5) {
           var counter = 0;
           while (counter < d.summary.length) {
             tooltip_html += '<div><span><strong>' + d.summary[counter].name + '</strong></span>';
-            tooltip_html += '<span>' + _this2.formatTime(d.summary[counter].value) + '</span></div>';
+            tooltip_html += '<span>' + convFunction(d.summary[counter].value) + '</span></div>';
             counter++;
           }
         } else {
           var _counter = 0;
           while (_counter < 5) {
             tooltip_html += '<div><span><strong>' + d.summary[_counter].name + '</strong></span>';
-            tooltip_html += '<span>' + _this2.formatTime(d.summary[_counter].value) + '</span></div>';
+            tooltip_html += '<span>' + convFunction(d.summary[_counter].value) + '</span></div>';
             _counter++;
           }
 
@@ -419,7 +420,7 @@ var CalendarHeatmap = function (_React$Component) {
             _counter++;
           }
           tooltip_html += '<div><span><strong>Other:</strong></span>';
-          tooltip_html += '<span>' + _this2.formatTime(other_projects_sum) + '</span></div>';
+          tooltip_html += '<span>' + _this2.convFunction(other_projects_sum) + '</span></div>';
         }
 
         // Calculate tooltip position
@@ -514,16 +515,17 @@ var CalendarHeatmap = function (_React$Component) {
       if (this.history[this.history.length - 1] !== this.overview) {
         this.history.push(this.overview);
       }
-
+      var startOfYearOverview = this.props.startOfYearOverview;
       // Define start and end date of the selected year
-      var start_of_year = (0, _moment2.default)(this.selected.date).startOf('year');
-      var end_of_year = (0, _moment2.default)(this.selected.date).endOf('year');
+
+      var start_of_year = !startOfYearOverview ? (0, _moment2.default)(this.selected.date).startOf('year') : startOfYearOverview;
+      var end_of_year = !startOfYearOverview ? (0, _moment2.default)(this.selected.date).endOf('year') : startOfYearOverview.clone().add(12, 'months');
 
       // Filter data down to the selected year
       var year_data = this.props.data.filter(function (d) {
         return start_of_year <= (0, _moment2.default)(d.date) && (0, _moment2.default)(d.date) < end_of_year;
       });
-
+      var cursorStyle = this.props.onlyYearOverview ? 'default' : 'pointer';
       // Calculate max value of the year data
       var max_value = d3.max(year_data, function (d) {
         return d.total;
@@ -550,7 +552,7 @@ var CalendarHeatmap = function (_React$Component) {
       };
 
       this.items.selectAll('.item-circle').remove();
-      this.items.selectAll('.item-circle').data(year_data).enter().append('rect').attr('class', 'item item-circle').style('cursor', 'pointer').style('opacity', 0).attr('x', function (d) {
+      this.items.selectAll('.item-circle').data(year_data).enter().append('rect').attr('class', 'item item-circle').style('cursor', cursorStyle).style('opacity', 0).attr('x', function (d) {
         return calcItemX(d) + (_this3.settings.item_size - calcItemSize(d)) / 2;
       }).attr('y', function (d) {
         return calcItemY(d) + (_this3.settings.item_size - calcItemSize(d)) / 2;
@@ -574,6 +576,10 @@ var CalendarHeatmap = function (_React$Component) {
           return;
         }
 
+        if (_this3.props.onlyYearOverview) {
+          return;
+        }
+
         _this3.in_transition = true;
 
         // Set selected date to the one clicked on
@@ -592,7 +598,6 @@ var CalendarHeatmap = function (_React$Component) {
         if (_this3.in_transition) {
           return;
         }
-
         // Pulsating animation
         var circle = d3.select(d3.event.currentTarget);
         var repeat = function repeat() {
@@ -613,15 +618,17 @@ var CalendarHeatmap = function (_React$Component) {
         repeat();
 
         // Construct tooltip
+        var convFunction = _this3.props.convFunction;
+
         var tooltip_html = '';
-        tooltip_html += '<div class="' + _calendarHeatmap2.default.header + '"><strong>' + (d.total ? _this3.formatTime(d.total) : 'No time') + ' tracked</strong></div>';
+        tooltip_html += '<div class="' + _calendarHeatmap2.default.header + '"><strong>' + (d.total ? convFunction(d.total) : 'No time') + ' tracked</strong></div>';
         tooltip_html += '<div>on ' + (0, _moment2.default)(d.date).format('dddd, MMM Do YYYY') + '</div><br>';
 
         // Add summary to the tooltip
         var counter = 0;
         while (counter < d.summary.length) {
           tooltip_html += '<div><span><strong>' + d.summary[counter].name + '</strong></span>';
-          tooltip_html += '<span>' + _this3.formatTime(d.summary[counter].value) + '</span></div>';
+          tooltip_html += '<span>' + convFunction(d.summary[counter].value) + '</span></div>';
           counter++;
         }
 
@@ -631,8 +638,14 @@ var CalendarHeatmap = function (_React$Component) {
           x -= _this3.settings.tooltip_width + _this3.settings.tooltip_padding * 2;
         }
         var y = calcItemY(d) + _this3.settings.item_size;
-
         // Show tooltip
+
+        var _container$getBoundin = _this3.container.getBoundingClientRect(),
+            containerX = _container$getBoundin.left,
+            containerY = _container$getBoundin.top;
+
+        x += containerX;
+        y += containerY;
         _this3.tooltip.html(tooltip_html).style('left', x + 'px').style('top', y + 'px').transition().duration(_this3.settings.transition_duration / 2).ease(d3.easeLinear).style('opacity', 1);
       }).on('mouseout', function () {
         if (_this3.in_transition) {
@@ -676,7 +689,7 @@ var CalendarHeatmap = function (_React$Component) {
       var month_labels = d3.timeMonths(start_of_year, end_of_year);
       var monthScale = d3.scaleLinear().range([0, this.settings.width]).domain([0, month_labels.length]);
       this.labels.selectAll('.label-month').remove();
-      this.labels.selectAll('.label-month').data(month_labels).enter().append('text').attr('class', 'label label-month').style('cursor', 'pointer').style('fill', 'rgb(170, 170, 170)').attr('font-size', function () {
+      this.labels.selectAll('.label-month').data(month_labels).enter().append('text').attr('class', 'label label-month').style('cursor', cursorStyle).style('fill', 'rgb(170, 170, 170)').attr('font-size', function () {
         return Math.floor(_this3.settings.label_padding / 3) + 'px';
       }).text(function (d) {
         return d.toLocaleDateString('en-us', { month: 'short' });
@@ -699,6 +712,9 @@ var CalendarHeatmap = function (_React$Component) {
         _this3.items.selectAll('.item-circle').transition().duration(_this3.settings.transition_duration).ease(d3.easeLinear).style('opacity', 1);
       }).on('click', function (d) {
         if (_this3.in_transition) {
+          return;
+        }
+        if (_this3.props.onlyYearOverview) {
           return;
         }
 
@@ -734,7 +750,7 @@ var CalendarHeatmap = function (_React$Component) {
         return (0, _moment2.default)(d).weekday();
       }));
       this.labels.selectAll('.label-day').remove();
-      this.labels.selectAll('.label-day').data(day_labels).enter().append('text').attr('class', 'label label-day').style('cursor', 'pointer').style('fill', 'rgb(170, 170, 170)').attr('x', this.settings.label_padding / 3).attr('y', function (d, i) {
+      this.labels.selectAll('.label-day').data(day_labels).enter().append('text').attr('class', 'label label-day').style('cursor', cursorStyle).style('fill', 'rgb(170, 170, 170)').attr('x', this.settings.label_padding / 3).attr('y', function (d, i) {
         return dayScale(i) + dayScale.bandwidth() / 1.75;
       }).style('text-anchor', 'left').attr('font-size', function () {
         return Math.floor(_this3.settings.label_padding / 3) + 'px';
@@ -758,7 +774,9 @@ var CalendarHeatmap = function (_React$Component) {
       });
 
       // Add button to switch back to previous overview
-      this.drawButton();
+      if (!this.props.onlyYearOverview) {
+        this.drawButton();
+      }
     }
 
     /**
@@ -873,9 +891,11 @@ var CalendarHeatmap = function (_React$Component) {
         var date = new Date(parentNode.attr('date'));
 
         // Construct tooltip
+        var convFunction = _this4.props.convFunction;
+
         var tooltip_html = '';
         tooltip_html += '<div class="' + _calendarHeatmap2.default.header + '"><strong>' + d.name + '</strong></div><br>';
-        tooltip_html += '<div><strong>' + (d.value ? _this4.formatTime(d.value) : 'No time') + ' tracked</strong></div>';
+        tooltip_html += '<div><strong>' + (d.value ? convFunction(d.value) : 'No time') + ' tracked</strong></div>';
         tooltip_html += '<div>on ' + (0, _moment2.default)(date).format('dddd, MMM Do YYYY') + '</div>';
 
         // Calculate tooltip position
@@ -1104,8 +1124,10 @@ var CalendarHeatmap = function (_React$Component) {
 
         // Construct tooltip
         var tooltip_html = '';
+        var convFunction = _this5.props.convFunction;
+
         tooltip_html += '<div class="' + _calendarHeatmap2.default.header + '"><strong>' + d.name + '</strong></div><br>';
-        tooltip_html += '<div><strong>' + (d.value ? _this5.formatTime(d.value) : 'No time') + ' tracked</strong></div>';
+        tooltip_html += '<div><strong>' + (d.value ? convFunction(d.value) : 'No time') + ' tracked</strong></div>';
         tooltip_html += '<div>on ' + (0, _moment2.default)(date).format('dddd, MMM Do YYYY') + '</div>';
 
         // Calculate tooltip position
@@ -1238,11 +1260,12 @@ var CalendarHeatmap = function (_React$Component) {
         if (_this6.in_transition) {
           return;
         }
-
+        var convFunction = _this6.props.convFunction;
         // Construct tooltip
+
         var tooltip_html = '';
         tooltip_html += '<div class="' + _calendarHeatmap2.default.header + '"><strong>' + d.name + '</strong><div><br>';
-        tooltip_html += '<div><strong>' + (d.value ? _this6.formatTime(d.value) : 'No time') + ' tracked</strong></div>';
+        tooltip_html += '<div><strong>' + (d.value ? convFunction(d.value) : 'No time') + ' tracked</strong></div>';
         tooltip_html += '<div>on ' + (0, _moment2.default)(d.date).format('dddd, MMM Do YYYY HH:mm') + '</div>';
 
         // Calculate tooltip position
@@ -1489,29 +1512,6 @@ var CalendarHeatmap = function (_React$Component) {
     value: function hideBackButton() {
       this.buttons.selectAll('.button').transition().duration(this.settings.transition_duration).ease(d3.easeLinear).style('opacity', 0).remove();
     }
-
-    /**
-     * Helper function to convert seconds to a human readable format
-     * @param seconds Integer
-     */
-
-  }, {
-    key: 'formatTime',
-    value: function formatTime(seconds) {
-      var hours = Math.floor(seconds / 3600);
-      var minutes = Math.floor((seconds - hours * 3600) / 60);
-      var time = '';
-      if (hours > 0) {
-        time += hours === 1 ? '1 hour ' : hours + ' hours ';
-      }
-      if (minutes > 0) {
-        time += minutes === 1 ? '1 minute' : minutes + ' minutes';
-      }
-      if (hours === 0 && minutes === 0) {
-        time = Math.round(seconds) + ' seconds';
-      }
-      return time;
-    }
   }, {
     key: 'render',
     value: function render() {
@@ -1528,11 +1528,36 @@ var CalendarHeatmap = function (_React$Component) {
   return CalendarHeatmap;
 }(React.Component);
 
+/**
+ * Helper function to convert seconds to a human readable format
+ * @param seconds Integer
+ */
+
+
+var formatTime = function formatTime(seconds) {
+  var hours = Math.floor(seconds / 3600);
+  var minutes = Math.floor((seconds - hours * 3600) / 60);
+  var time = '';
+  if (hours > 0) {
+    time += hours === 1 ? '1 hour ' : hours + ' hours ';
+  }
+  if (minutes > 0) {
+    time += minutes === 1 ? '1 minute' : minutes + ' minutes';
+  }
+  if (hours === 0 && minutes === 0) {
+    time = Math.round(seconds) + ' seconds';
+  }
+  return time;
+};
+
 CalendarHeatmap.defaultProps = {
   data: [],
   overview: 'year',
   color: '#ff4500',
-  handler: undefined
+  handler: undefined,
+  onlyYearOverview: false,
+  startOfYearOverview: null,
+  convFunction: formatTime
 };
 
 exports.default = CalendarHeatmap;
