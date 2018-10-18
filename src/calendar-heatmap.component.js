@@ -11,12 +11,12 @@ class CalendarHeatmap extends React.Component {
     super(props)
 
     this.settings = {
-      gutter: 5,
-      item_gutter: 1,
-      width: 1000,
+      gutter: 1,
+      item_gutter: 0,
+      width: 750,
       height: 200,
-      item_size: 10,
-      label_padding: 40,
+      item_size: 8,
+      label_padding: 30,
       max_block_height: 20,
       transition_duration: 500,
       tooltip_width: 250,
@@ -80,7 +80,7 @@ class CalendarHeatmap extends React.Component {
     let colIndex = Math.trunc(dayIndex / 7)
     let numWeeks = colIndex + 1
 
-    this.settings.width = this.container.offsetWidth < 1000 ? 1000 : this.container.offsetWidth
+    this.settings.width = this.container.offsetWidth < 750 ? 750 : this.container.offsetWidth
     this.settings.item_size = ((this.settings.width - this.settings.label_padding) / numWeeks - this.settings.gutter)
     this.settings.height = this.settings.label_padding + 7 * (this.settings.item_size + this.settings.gutter)
     this.svg.attr('width', this.settings.width)
@@ -358,7 +358,7 @@ class CalendarHeatmap extends React.Component {
       .data(year_labels)
       .enter()
       .append('text')
-      .attr('class', 'label label-year')
+      .attr('class', 'label-heatmap label-year')
       .style('cursor', 'pointer')
       .style('fill', 'rgb(170, 170, 170)')
       .attr('font-size', () => {
@@ -474,12 +474,12 @@ class CalendarHeatmap extends React.Component {
       .attr('y', d => {
         return calcItemY(d) + (this.settings.item_size - calcItemSize(d)) / 2
       })
-      .attr('rx', d => {
-        return calcItemSize(d)
-      })
-      .attr('ry', d => {
-        return calcItemSize(d)
-      })
+      // .attr('rx', d => {
+      //   return calcItemSize(d)
+      // })
+      // .attr('ry', d => {
+      //   return calcItemSize(d)
+      // })
       .attr('width', d => {
         return calcItemSize(d)
       })
@@ -550,7 +550,7 @@ class CalendarHeatmap extends React.Component {
         // Construct tooltip
         const {convFunction} = this.props;
         let tooltip_html = ''
-        tooltip_html += `<div class="${styles.header}"><strong>${d.total ? convFunction(d.total) : 'No time'} tracked</strong></div>`
+        tooltip_html += `<div class="${styles.header}"><strong>${d.total ? convFunction(d.total) : 'No time'}</strong></div>`
         tooltip_html += '<div>on ' + moment(d.date).format('dddd, MMM Do YYYY') + '</div><br>'
 
         // Add summary to the tooltip
@@ -568,9 +568,9 @@ class CalendarHeatmap extends React.Component {
         }
         let y = calcItemY(d) + this.settings.item_size
         // Show tooltip
-        const {left: containerX, top: containerY} = this.container.getBoundingClientRect();
-        x += containerX;
-        y += containerY;
+        // const {left: containerX, top: containerY} = this.container.getBoundingClientRect();
+        // x += containerX;
+        // y += containerY;
         this.tooltip.html(tooltip_html)
           .style('left', x + 'px')
           .style('top', y + 'px')
@@ -630,14 +630,14 @@ class CalendarHeatmap extends React.Component {
     // Add month labels
     let month_labels = d3.timeMonths(start_of_year, end_of_year)
     let monthScale = d3.scaleLinear()
-      .range([0, this.settings.width])
+      .range([this.settings.label_padding, this.settings.width])
       .domain([0, month_labels.length])
     this.labels.selectAll('.label-month').remove()
     this.labels.selectAll('.label-month')
       .data(month_labels)
       .enter()
       .append('text')
-      .attr('class', 'label label-month')
+      .attr('class', 'label-heatmap label-month')
       .style('cursor', cursorStyle)
       .style('fill', 'rgb(170, 170, 170)')
       .attr('font-size', () => {
@@ -647,7 +647,7 @@ class CalendarHeatmap extends React.Component {
         return d.toLocaleDateString('en-us', { month: 'short' })
       })
       .attr('x', (d, i) => {
-        return monthScale(i) + (monthScale(i) - monthScale(i - 1)) / 2
+        return monthScale(i)
       })
       .attr('y', this.settings.label_padding / 2)
       .on('mouseenter', d => {
@@ -711,7 +711,7 @@ class CalendarHeatmap extends React.Component {
       .data(day_labels)
       .enter()
       .append('text')
-      .attr('class', 'label label-day')
+      .attr('class', 'label-heatmap label-day')
       .style('cursor', cursorStyle)
       .style('fill', 'rgb(170, 170, 170)')
       .attr('x', this.settings.label_padding / 3)
@@ -941,7 +941,7 @@ class CalendarHeatmap extends React.Component {
       .data(week_labels)
       .enter()
       .append('text')
-      .attr('class', 'label label-week')
+      .attr('class', 'label-heatmap label-week')
       .style('cursor', 'pointer')
       .style('fill', 'rgb(170, 170, 170)')
       .attr('font-size', () => {
@@ -1007,7 +1007,7 @@ class CalendarHeatmap extends React.Component {
       .data(day_labels)
       .enter()
       .append('text')
-      .attr('class', 'label label-day')
+      .attr('class', 'label-heatmap label-day')
       .style('cursor', 'pointer')
       .style('fill', 'rgb(170, 170, 170)')
       .attr('x', this.settings.label_padding / 3)
@@ -1234,7 +1234,7 @@ class CalendarHeatmap extends React.Component {
       .data(week_labels)
       .enter()
       .append('text')
-      .attr('class', 'label label-week')
+      .attr('class', 'label-heatmap label-week')
       .style('cursor', 'pointer')
       .style('fill', 'rgb(170, 170, 170)')
       .attr('font-size', () => {
@@ -1274,7 +1274,7 @@ class CalendarHeatmap extends React.Component {
       .data(day_labels)
       .enter()
       .append('text')
-      .attr('class', 'label label-day')
+      .attr('class', 'label-heatmap label-day')
       .style('cursor', 'pointer')
       .style('fill', 'rgb(170, 170, 170)')
       .attr('x', this.settings.label_padding / 3)
@@ -1435,7 +1435,7 @@ class CalendarHeatmap extends React.Component {
       .data(timeLabels)
       .enter()
       .append('text')
-      .attr('class', 'label label-time')
+      .attr('class', 'label-heatmap label-time')
       .style('cursor', 'pointer')
       .style('fill', 'rgb(170, 170, 170)')
       .attr('font-size', () => {
@@ -1479,7 +1479,7 @@ class CalendarHeatmap extends React.Component {
       .data(project_labels)
       .enter()
       .append('text')
-      .attr('class', 'label label-project')
+      .attr('class', 'label-heatmap label-project')
       .style('cursor', 'pointer')
       .style('fill', 'rgb(170, 170, 170)')
       .attr('x', this.settings.gutter)
