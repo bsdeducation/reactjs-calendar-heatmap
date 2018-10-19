@@ -4,6 +4,7 @@
   -ms-user-select: none;
   -moz-user-select: none;
   -webkit-user-select: none;
+  overflow:auto;
 }
 .calendarHeatmap .heatmapTooltip {
   pointer-events: none;
