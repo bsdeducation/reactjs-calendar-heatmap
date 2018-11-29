@@ -21,6 +21,7 @@ class CalendarHeatmap extends React.Component {
       transition_duration: 500,
       tooltip_width: 250,
       tooltip_padding: 15,
+      legend_padding: 40,
     }
 
     this.in_transition = false
@@ -53,6 +54,7 @@ class CalendarHeatmap extends React.Component {
     this.items = this.svg.append('g')
     this.labels = this.svg.append('g')
     this.buttons = this.svg.append('g')
+    this.legends = this.svg.append('g')
 
     // Add tooltip to the same element as main svg
     this.tooltip = d3.select('#calendar-heatmap')
@@ -82,7 +84,7 @@ class CalendarHeatmap extends React.Component {
 
     this.settings.width = this.container.offsetWidth < 750 ? 750 : this.container.offsetWidth
     this.settings.item_size = ((this.settings.width - this.settings.label_padding) / numWeeks - this.settings.gutter)
-    this.settings.height = this.settings.label_padding + 7 * (this.settings.item_size + this.settings.gutter)
+    this.settings.height = this.settings.label_padding + 7 * (this.settings.item_size + this.settings.gutter) + this.settings.legend_padding
     this.svg.attr('width', this.settings.width)
       .attr('height', this.settings.height)
 
@@ -437,11 +439,14 @@ class CalendarHeatmap extends React.Component {
     const cursorStyle = this.props.onlyYearOverview ? 'default' : 'pointer';
     // Calculate max value of the year data
     let max_value = d3.max(year_data, d => d.total)
-
+    let min_value = d3.min(year_data, d => d.total)
     let color = d3.scaleLinear()
-      .range(['#ffffff', this.props.color])
-      .domain([-0.15 * max_value, max_value])
+    .range(['#ffffff', this.props.color])
+    .domain([-0.15 * max_value, max_value])
 
+    const max_value_color = color(max_value);
+    const min_value_color = color(min_value);
+  
     let calcItemX = (d) => {
       let date = moment(d.date)
       let dayIndex = Math.round((date - moment(start_of_year).startOf('week')) / 86400000)
@@ -459,6 +464,72 @@ class CalendarHeatmap extends React.Component {
       }
       return this.settings.item_size * 0.75 + (this.settings.item_size * d.total / max_value) * 0.25
     }
+
+    this.legends.selectAll('.legend').remove();
+    this.legends.selectAll('.min-max').remove();
+
+    const gradient = this.legends
+      .append('linearGradient')
+      .attr('id', 'linear-gradient')
+
+    gradient
+      .attr('x1', '100%')
+      .attr('y1', '0%')
+      .attr('x2', '0%')
+      .attr('y2', '0%')
+
+    gradient.selectAll('stop')
+      .data([
+        {offset: '0%', color: max_value_color},
+        {offset: '100%', color: min_value_color}
+      ])
+      .enter().append('stop')
+      .attr('offset', function(d) { 
+        return d.offset; 
+      })
+      .attr('stop-color', function(d) { 
+        return d.color; 
+      });
+
+      let widthLegend = 200;
+      let heightLegend = 20;
+      let xPositionLegend = this.settings.width/2 - widthLegend/2;
+      let yPositionLegend = this.settings.height + 5;
+
+      this.legends
+      .append('rect')
+      .attr('class', 'legend')
+      .attr('width', widthLegend)
+      .attr('height', heightLegend)
+
+      .attr('x', d => {
+        return xPositionLegend;
+      })
+      .attr('y', d => {
+        return yPositionLegend -20 ;
+      })
+      .style('fill', 'url(#linear-gradient)');
+
+      this.legends.append('text')
+      .attr('class', 'min-max')
+      .attr('x', xPositionLegend - 15 )
+      .attr('y', yPositionLegend - 10 )
+      .text(min_value)
+      .style('fill', 'rgb(170, 170, 170)')
+      .attr('font-size', () => {
+        return Math.floor(this.settings.label_padding / 3) + 'px'
+      })
+      ;
+
+      this.legends.append('text')
+      .attr('class', 'min-max')
+      .attr('x',xPositionLegend  + 205)
+      .attr('y',yPositionLegend  - 10)
+      .text(max_value)
+      .style('fill', 'rgb(170, 170, 170)')
+      .attr('font-size', () => {
+        return Math.floor(this.settings.label_padding / 3) + 'px'
+      });
 
     this.items.selectAll('.item-circle').remove()
     this.items.selectAll('.item-circle')
@@ -702,7 +773,7 @@ class CalendarHeatmap extends React.Component {
     // Add day labels
     let day_labels = d3.timeDays(moment().startOf('week'), moment().endOf('week'))
     let dayScale = d3.scaleBand()
-      .rangeRound([this.settings.label_padding, this.settings.height])
+      .rangeRound([this.settings.label_padding, this.settings.height - this.settings.legend_padding])
       .domain(day_labels.map(d => {
         return moment(d).weekday()
       }))
