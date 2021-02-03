@@ -142,7 +142,7 @@ class CalendarHeatmap extends React.Component {
    * Draw global overview (multiple years)
    */
   drawGlobalOverview() {
-
+    
     // Add current overview to the history
     if (this.history[this.history.length - 1] !== this.overview) {
       this.history.push(this.overview)
@@ -427,10 +427,10 @@ class CalendarHeatmap extends React.Component {
     // Define start and end date of the selected year
     let start_of_year = !startOfYearOverview
       ? moment(this.selected.date).startOf('year')
-      : startOfYearOverview
+      : moment(startOfYearOverview)
     let end_of_year = !startOfYearOverview
       ? moment(this.selected.date).endOf('year')
-      : startOfYearOverview.clone().add(12, 'months')
+      : moment(startOfYearOverview).add(12, 'months')
 
     // Filter data down to the selected year
     let year_data = this.props.data.filter(d => {
